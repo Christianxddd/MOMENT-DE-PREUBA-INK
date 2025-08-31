@@ -2411,19 +2411,32 @@ RandomTab:Toggle({
 -- WALK SPEED SLIDER
 -- ========================
 
+local WalkSpeedEnabled = false
 local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
 LocalPlayer.CharacterAdded:Connect(function(char)
     humanoid = char:WaitForChild("Humanoid")
 end)
 
-RandomTab:Slider({
+RandomTab:Toggle({
     Title = "WalkSpeed",
-    Desc = "Cambia tu velocidad de movimiento",
+    Desc = "Activa/Desactiva velocidad personalizada",
+    Default = false,
+    Callback = function(state)
+        WalkSpeedEnabled = state
+        if not state and humanoid then
+            humanoid.WalkSpeed = 16 -- reset al desactivar
+        end
+    end
+})
+
+RandomTab:Slider({
+    Title = "WalkSpeed Value",
+    Desc = "Selecciona la velocidad deseada",
     Min = 16,
     Max = 200,
     Default = 16,
     Callback = function(value)
-        if humanoid then
+        if WalkSpeedEnabled and humanoid then
             humanoid.WalkSpeed = value
         end
     end
@@ -2434,13 +2447,15 @@ RandomTab:Slider({
 -- ========================
 
 local flingEnabled = false
-local flingForce = 300
+local flingPower = 5000
 
 local function flingPlayer(target)
-    if target and target:FindFirstChild("HumanoidRootPart") and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        local hrp = LocalPlayer.Character.HumanoidRootPart
-        local direction = (target.HumanoidRootPart.Position - hrp.Position).unit
-        target.HumanoidRootPart.Velocity = direction * flingForce
+    if target and target:FindFirstChild("HumanoidRootPart") then
+        local bv = Instance.new("BodyVelocity")
+        bv.Velocity = Vector3.new(0, flingPower, 0) + (target.HumanoidRootPart.CFrame.LookVector * flingPower)
+        bv.MaxForce = Vector3.new(1e5, 1e5, 1e5)
+        bv.Parent = target.HumanoidRootPart
+        game.Debris:AddItem(bv, 0.2)
     end
 end
 
@@ -2453,7 +2468,6 @@ RandomTab:Toggle({
     end
 })
 
--- Detecta toques de proximidad y aplica fling
 game:GetService("RunService").Heartbeat:Connect(function()
     if flingEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
         local hrp = LocalPlayer.Character.HumanoidRootPart
@@ -2471,9 +2485,14 @@ end)
 -- TP A JUGADORES
 -- ========================
 
-local function teleportToPlayer(targetPlayer)
-    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
-        LocalPlayer.Character.HumanoidRootPart.CFrame = targetPlayer.Character.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
+local selectedPlayer = nil
+
+local function teleportToPlayer()
+    if selectedPlayer and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local target = Players:FindFirstChild(selectedPlayer)
+        if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") then
+            LocalPlayer.Character.HumanoidRootPart.CFrame = target.Character.HumanoidRootPart.CFrame + Vector3.new(0, 3, 0)
+        end
     end
 end
 
@@ -2497,14 +2516,19 @@ Players.PlayerRemoving:Connect(function(p)
 end)
 
 RandomTab:Dropdown({
-    Title = "TP to Player",
-    Desc = "Selecciona jugador para teletransportar",
+    Title = "Seleccionar Jugador",
+    Desc = "Selecciona a quién teletransportarte",
     Values = playerList,
     Multi = false,
     Callback = function(value)
-        local target = Players:FindFirstChild(value)
-        if target then
-            teleportToPlayer(target)
-        end
+        selectedPlayer = value
+    end
+})
+
+RandomTab:Button({
+    Title = "TP al jugador",
+    Desc = "Presiona para teletransportarte al jugador seleccionado",
+    Callback = function()
+        teleportToPlayer()
     end
 })
