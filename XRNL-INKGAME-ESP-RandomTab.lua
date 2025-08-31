@@ -94,6 +94,25 @@ local DalgonaTab = Window:Tab({
 
 })
 
+-- ========================
+-- AUTO DALGONA INSTANT
+-- ========================
+
+DalgonaTab:Button({
+    Title = "Auto Dalgona (Instant)",
+    Desc = "Completa automáticamente la figura en cuanto presiones.",
+    Callback = function()
+        -- Escanea el workspace y dispara todos los prompts de Dalgona
+        for _, obj in ipairs(workspace:GetDescendants()) do
+            if obj:IsA("ProximityPrompt") and string.find(obj.Name:lower(), "dalgona") then
+                pcall(function()
+                    fireproximityprompt(obj, 0) -- fuerza interacción instantánea
+                end)
+            end
+        end
+    end
+})
+
 
 
 local LightsTab = Window:Tab({
@@ -2532,3 +2551,39 @@ RandomTab:Button({
         teleportToPlayer()
     end
 })
+
+-- ========================
+-- ANTI FLING
+-- ========================
+
+local AntiFlingEnabled = false
+local RS = game:GetService("RunService")
+
+RandomTab:Toggle({
+    Title = "Anti-Fling",
+    Desc = "Evita que otros jugadores te lancen por el mapa.",
+    Default = false,
+    Callback = function(state)
+        AntiFlingEnabled = state
+    end
+})
+
+RS.Heartbeat:Connect(function()
+    if AntiFlingEnabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local hrp = LocalPlayer.Character.HumanoidRootPart
+        -- Revisa todos los BodyVelocity, BodyThrust y BodyAngularVelocity cercanos
+        for _, player in ipairs(Players:GetPlayers()) do
+            if player ~= LocalPlayer and player.Character then
+                for _, obj in ipairs(player.Character:GetDescendants()) do
+                    if obj:IsA("BodyVelocity") or obj:IsA("BodyAngularVelocity") or obj:IsA("BodyThrust") then
+                        -- Neutraliza la fuerza para que no te afecte
+                        obj.Velocity = Vector3.new(0, 0, 0)
+                        obj.MaxForce = Vector3.new(0, 0, 0)
+                    end
+                end
+            end
+        end
+        -- Asegura que tu RootPart no sea empujado
+        hrp.AssemblyLinearVelocity = Vector3.new(0, hrp.AssemblyLinearVelocity.Y, 0)
+    end
+end)
